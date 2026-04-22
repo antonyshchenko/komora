@@ -11,7 +11,7 @@ pub enum DbEngine {
 pub const CATALOG_METADATA_LATEST_VERSION: u16 = 1;
 pub const CATALOG_METADATA_FILE_NAME: &str = "catalog_metadata.toml";
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CatalogMetadata {
     pub engine: DbEngine,
     pub version: u16,

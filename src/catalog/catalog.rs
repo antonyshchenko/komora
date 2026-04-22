@@ -31,48 +31,77 @@ pub fn read_catalog_metadata(dir: &Path) -> Result<CatalogMetadata> {
 mod tests {
     use super::*;
     use crate::catalog::metadata::{CATALOG_METADATA_LATEST_VERSION, DbEngine};
-    use crate::error::Result;
+    use std::path::PathBuf;
     use tempfile::tempdir;
 
     #[test]
-    fn catalog_dir_creation() -> Result<()> {
+    fn catalog_dir_creation() {
         let dir = tempdir().unwrap();
 
-        create_in_dir(dir.path())?;
-
-        Ok(())
+        create_in_dir(dir.path()).unwrap();
     }
 
     #[test]
-    fn catalog_dir_cant_be_created_twice() -> Result<()> {
+    fn not_allowed_to_create_catalog_dir_twice() {
         let dir = tempdir().unwrap();
 
-        create_in_dir(dir.path())?;
-        assert!(create_in_dir(dir.path()).is_err());
+        create_in_dir(dir.path()).unwrap();
 
-        Ok(())
+        assert!(matches!(
+            create_in_dir(dir.path()).unwrap_err(),
+            Error::CatalogExists { .. }
+        ));
     }
 
     #[test]
-    fn catalog_metadata_reading_success() -> Result<()> {
+    fn catalog_metadata_reading_success() {
         let dir = tempdir().unwrap();
 
-        create_in_dir(dir.path())?;
-        let metadata = read_catalog_metadata(dir.path())?;
+        create_in_dir(dir.path()).unwrap();
+
+        let metadata = read_catalog_metadata(dir.path()).unwrap();
         assert_eq!(metadata.version, CATALOG_METADATA_LATEST_VERSION);
         assert_eq!(metadata.engine, DbEngine::Komora);
-
-        Ok(())
     }
 
     #[test]
-    fn catalog_metadata_reading_failure() -> Result<()> {
+    fn catalog_metadata_reading_failure() {
         let dir = tempdir().unwrap();
 
-        create_in_dir(dir.path())?;
+        create_in_dir(dir.path()).unwrap();
         fs::remove_file(dir.path().join(CATALOG_METADATA_FILE_NAME)).unwrap();
-        assert!(read_catalog_metadata(dir.path()).is_err());
 
-        Ok(())
+        assert!(matches!(
+            read_catalog_metadata(dir.path()).unwrap_err(),
+            Error::CatalogMetadataReadFailed { .. }
+        ));
+    }
+
+    #[test]
+    fn catalog_metadata_reading_failure_due_to_incompatible_version() {
+        let dir = catalog_fixture_path("incompatible_version");
+
+        assert!(matches!(
+            read_catalog_metadata(&dir).unwrap_err(),
+            Error::IncompatibleCatalogMetadataVersion { .. }
+        ));
+    }
+
+    #[test]
+    fn catalog_metadata_deserialization_failure() {
+        let dir = catalog_fixture_path("invalid_metadata");
+
+        assert!(matches!(
+            read_catalog_metadata(&dir).unwrap_err(),
+            Error::CatalogMetadataDeserializationFailed { .. }
+        ));
+    }
+
+    fn catalog_fixture_path(name: &str) -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            .join("catalog")
+            .join(name)
     }
 }
