@@ -1,0 +1,9 @@
+[[columns]]
+name = "column1"
+typ = "Int"
+nullable = false
+
+[[columns]]
+name = "column2"
+typ = "Text"
+nullable = true

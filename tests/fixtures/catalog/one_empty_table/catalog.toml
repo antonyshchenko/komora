@@ -1,0 +1,7 @@
+engine = "Komora"
+storage_type = "RowOriented"
+version = 1
+next_table_id = 2
+
+[tables]
+table2 = 1

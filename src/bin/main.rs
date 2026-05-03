@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 use env_logger::Env;
-use komora::catalog;
 use komora::error::Result;
+use komora::storage::Storage;
 use std::path::Path;
 use std::process::exit;
 
@@ -19,34 +19,36 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Init,
-    Doctor,
+    Info,
 }
 
 fn main() {
     env_logger::init_from_env(Env::default().filter("LOG_LEVEL"));
 
-    let cli = Cli::parse();
-    let catalog_path = Path::new(&cli.db);
+    match Cli::try_parse() {
+        Ok(cli) => {
+            let dir = Path::new(&cli.db);
 
-    if let Err(error) = match &cli.command {
-        Commands::Init => init(&catalog_path),
-        Commands::Doctor => doctor(&catalog_path),
-    } {
-        eprintln!("{}", error);
-        exit(1);
+            if let Err(error) = match &cli.command {
+                Commands::Init => init(dir),
+                Commands::Info => info(dir),
+            } {
+                eprintln!("{}", error);
+                exit(1);
+            }
+        }
+        Err(error) => error.exit(),
     }
 }
 
-fn init(catalog_path: &Path) -> Result<()> {
-    log::debug!("Initializing in {:?}", catalog_path);
-    catalog::create_in_dir(catalog_path)?;
-    log::debug!("Done");
+fn init(dir: &Path) -> Result<()> {
+    Storage::new(dir).create_catalog()?;
     Ok(())
 }
 
-fn doctor(catalog_path: &Path) -> Result<()> {
-    log::debug!("Checking catalog in {:?}", catalog_path);
-    let metadata = catalog::read_catalog_metadata(catalog_path)?;
-    println!("Catalog is valid, version: {}", metadata.version);
+fn info(dir: &Path) -> Result<()> {
+    let meta_info = Storage::new(dir).get_meta_info()?;
+    println!("Storage type: {:?}", meta_info.storage_type);
+    println!("Catalog version: {}", meta_info.catalog_version);
     Ok(())
 }
